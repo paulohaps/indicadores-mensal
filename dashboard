@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Operacional - Upvalue</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        :root { --primary: #1f4e79; --bg: #f3f6f9; --surface: #ffffff; --text: #333333; --border: #d1d5db; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: var(--bg); color: var(--text); margin: 0; padding: 20px; }
+        .container { max-width: 1400px; margin: 0 auto; }
+        
+        .nav-tabs { display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 2px solid var(--border); padding-bottom: 10px; }
+        .tab-btn { background: #e2e8f0; border: none; padding: 12px 24px; border-radius: 6px 6px 0 0; cursor: pointer; font-weight: bold; font-size: 15px; color: var(--text); transition: 0.2s; }
+        .tab-btn:hover { background: #cbd5e1; }
+        .tab-btn.active { background: var(--primary); color: white; }
+
+        .card { background: var(--surface); padding: 20px; border-radius: 8px; margin-bottom: 20px; overflow-x: auto; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .form-group { display: inline-block; margin-right: 15px; margin-bottom: 10px; }
+        label { display: block; font-weight: bold; margin-bottom: 5px; font-size: 14px; }
+        select, input[type="file"], input[type="text"] { padding: 8px; border: 1px solid var(--border); border-radius: 4px; }
+        
+        button { border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-weight: bold; color: white; transition: 0.2s; }
+        .btn-add { background-color: var(--primary); }
+        .btn-add:hover { background-color: #163a5b; }
+        .btn-clear-city { background-color: #f59e0b; }
+        .btn-clear-city:hover { background-color: #d97706; }
+        .btn-clear-all { background-color: #dc3545; }
+        .btn-clear-all:hover { background-color: #a71d2a; }
+        .btn-export { background-color: #10b981; }
+        .btn-export:hover { background-color: #059669; }
+
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
+        th, td { border: 1px solid var(--border); padding: 8px; text-align: center; }
+        td:first-child { text-align: left; background-color: #f8fafc; font-weight: 500; }
+        th { background-color: var(--primary); color: white; }
+        .vol-row td { background-color: #eef2f5; font-weight: bold; }
+        .log { margin-top: 10px; font-size: 14px; color: #155724; font-weight: 500;}
+        
+        .config-actions { background: #eef2f5; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid var(--border); display: flex; gap: 10px; align-items: center; justify-content: space-between;}
+        .config-header { margin-bottom: 10px; color: var(--primary); margin-top: 0; }
+        .config-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 15px; }
+        .config-card { border: 1px solid var(--border); border-radius: 8px; background: white; display: flex; flex-direction: column; }
+        .config-card-header { background: #eef2f5; color: var(--primary); padding: 10px; font-weight: bold; border-radius: 8px 8px 0 0; border-bottom: 1px solid var(--border); text-align: center; font-size: 13px;}
+        .config-card-body { padding: 15px; flex-grow: 1; display: flex; flex-direction: column; gap: 8px; align-items: center;}
+        .tag { background: var(--primary); color: white; padding: 6px 12px; border-radius: 15px; font-size: 12px; text-align: center; width: 90%;}
+    </style>
+</head>
+<body>
+
+<div class="container">
+    
+    <div class="nav-tabs">
+        <button id="btnTabDashboard" class="tab-btn active" onclick="alternarAba('dashboard')">📊 Painel Operacional</button>
+        <button id="btnTabConfig" class="tab-btn" onclick="alternarAba('config')">⚙️ Banco de Dados (Visualizador)</button>
+    </div>
+
+    <div id="abaDashboard" style="display: block;">
+        <div class="card">
+            <div class="form-group">
+                <label>Selecione a Regional:</label>
+                <select id="cidadeSelect">
+                    <option value="JIP">JI PARANÁ (JIP)</option>
+                    <option value="OPO">OURO PRETO DO OESTE (OPO)</option>
+                    <option value="ALV">ALVORADA DO OESTE (ALV)</option>
+                    <option value="MDO">MACHADINHO DO OESTE (MDO)</option>
+                    <option value="MED">PRESIDENTE MÉDICE (MED)</option>
+                    <option value="JRA">Jaru (JRA)</option>
+                    <option value="NBO">NOVA BRASILANDIA (NBO)</option>
+                    <option value="RLM">ROLIM DE MOURA (RLM)</option>
+                    <option value="SFO">SÃO FELIPE (SFO)</option>
+                    <option value="ATF">Alta Floresta (ATF)</option>
+                    <option value="SFP">SÃO FRANCISCO (SFP)</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <input type="file" id="excelFile" accept=".xlsx, .xls, .xlsm, .csv">
+            </div>
+
+            <div class="form-group" style="display: block; margin-top: 10px;">
+                <button class="btn-add" onclick="processarArquivo()">➕ Adicionar Dados</button>
+                <button class="btn-clear-city" onclick="limparCidade()">🧹 Limpar Só a Cidade</button>
+                <button class="btn-clear-all" onclick="limparTudo()">🗑️ Limpar Tudo</button>
+                <button class="btn-export" onclick="exportarExcel()">💾 Exportar para Excel</button>
+            </div>
+            <div id="statusLog" class="log">🔄 Conectando ao Banco de Dados na Nuvem...</div>
+        </div>
+
+        <div class="card" style="padding: 0;">
+            <table id="tabelaResultados">
+                <thead></thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="abaConfig" style="display: none;">
+        <div class="card">
+            <h2 class="config-header">⚙️ Organograma Oficial (Lido da Nuvem)</h2>
+            
+            <div class="config-actions">
+                <div>
+                    <p style="margin: 0;"><strong>Como adicionar assuntos novos?</strong></p>
+                    <p style="margin: 0; font-size: 14px;">A sua planilha no Google Sheets agora é LIDA NA HORIZONTAL (Categorias no topo, assuntos embaixo). Edite-a e atualize esta página.</p>
+                </div>
+                <button class="btn-add" onclick="window.open('https://docs.google.com/spreadsheets/', '_blank')">📝 Abrir Planilha Google Sheets</button>
+            </div>
+
+            <div class="config-grid" id="configContainer">
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    // =====================================================================================
+    // 🔗 COLOQUE AQUI O LINK DO SEU CSV PUBLICADO DO GOOGLE SHEETS
+    // =====================================================================================
+    const LINK_GOOGLE_SHEETS_CSV = "COLE_O_LINK_AQUI"; 
+
+
+    const linhasConfig = [
+        { label: "Tempo Médio de Instalação Fibra Urbana em Horas", type: "TME", cat: "INSTALAÇÕES FIBRA URBANA" },
+        { label: "Taxa em % Feito dentro Prazo Instalação Fibra Urbana", type: "SLA", cat: "INSTALAÇÕES FIBRA URBANA" },
+        { label: "Tempo Médio de Instalação Fibra Rural em Horas", type: "TME", cat: "INSTALAÇÕES FIBRA Rural" },
+        { label: "Taxa em % Feito dentro Prazo Instalação Fibra Rural", type: "SLA", cat: "INSTALAÇÕES FIBRA Rural" },
+        { label: "Tempo Médio de Instalação Rádio em Horas", type: "TME", cat: "Instalações Rádio" },
+        { label: "Taxa em % Feito dentro Prazo Instalação Rádio", type: "SLA", cat: "Instalações Rádio" },
+        { label: "Tempo Médio de Alteração de Endereço Fibra Urbana em Horas", type: "TME", cat: "Alteração de Endereço Fibra Urbana" },
+        { label: "Tempo Médio de Alteração de Endereço Fibra Rural em Horas", type: "TME", cat: "Alteração de Endereço Fibra Rural" },
+        { label: "Tempo Médio de Alteração de Endereço Radio em Horas", type: "TME", cat: "Alteração de Endereço Radio" },
+        { label: "Tempo Médio de Alteração da Tecnologia para Fibra/Rádio", type: "TME", cat: "Alteração da Tecnologia para Fibra/Rádio" },
+        { label: "Tempo Médio de Atendimento (TME) Suporte Fibra urbana em Horas", type: "TME", cat: "suporte externo fibra Urbana" },
+        { label: "Tempo Médio de Atendimento (TME) Suporte Fibra Rural em Horas", type: "TME", cat: "suporte externo fibra Rural" },
+        { label: "Tempo Médio de Atendimento (TME) Suporte Rádio em Horas", type: "TME", cat: "suporte externo Radio" },
+        { label: "Número de INSTALAÇÕES FIBRA URBANA", type: "VOL", cat: "INSTALAÇÕES FIBRA URBANA" },
+        { label: "Número de INSTALAÇÕES FIBRA Rural", type: "VOL", cat: "INSTALAÇÕES FIBRA Rural" },
+        { label: "Número de Instalações Rádio", type: "VOL", cat: "Instalações Rádio" },
+        { label: "Número de Alteração de Endereço Fibra Urbana", type: "VOL", cat: "Alteração de Endereço Fibra Urbana" },
+        { label: "Número de Alteração de Endereço Fibra Rural", type: "VOL", cat: "Alteração de Endereço Fibra Rural" },
+        { label: "Número de Alteração de Endereço Radio", type: "VOL", cat: "Alteração de Endereço Radio" },
+        { label: "Número de suporte externo fibra Urbana", type: "VOL", cat: "suporte externo fibra Urbana" },
+        { label: "Número de suporte externo fibra Rural", type: "VOL", cat: "suporte externo fibra Rural" },
+        { label: "Número de suporte externo Radio", type: "VOL", cat: "suporte externo Radio" },
+        { label: "Alteração da Tecnologia para Fibra", type: "VOL", cat: "Alteração da Tecnologia para Fibra/Rádio" },
+        { label: "Remoção de Equipamentos", type: "VOL", cat: "Remoção de Equipamentos" },
+        { label: "Viabilidades", type: "VOL", cat: "Viabilidades" }
+    ];
+
+    const cidadesList = ["JIP", "OPO", "ALV", "MDO", "MED", "JRA", "NBO", "RLM", "SFO", "ATF", "SFP"];
+
+    let bancoOficial = {}; 
+    let resultadosDashboard = {}; 
+
+    // ==== INICIALIZAÇÃO: LENDO DO GOOGLE SHEETS (HORIZONTAL) ====
+    window.onload = async function() { 
+        await conectarBancoNuvem();
+
+        let salvoDashboard = localStorage.getItem('upvalueDashboardData');
+        if(salvoDashboard) { resultadosDashboard = JSON.parse(salvoDashboard); }
+
+        gerarDashboard(); 
+        renderizarOrganograma();
+    }
+
+    async function conectarBancoNuvem() {
+        if(LINK_GOOGLE_SHEETS_CSV === "COLE_O_LINK_AQUI") {
+            document.getElementById('statusLog').innerHTML = `⚠️ Você ainda não configurou o link do Google Sheets no código. A tabela ficará vazia.`;
+            return;
+        }
+
+        try {
+            const resposta = await fetch(LINK_GOOGLE_SHEETS_CSV);
+            const csvText = await resposta.text();
+            
+            const workbook = XLSX.read(csvText, {type: 'string'});
+            const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+            
+            // {header: 1} converte a tabela numa Matriz onde a Linha 0 são os cabeçalhos!
+            const matrizExcel = XLSX.utils.sheet_to_json(worksheet, {header: 1});
+
+            let novoBanco = {};
+            
+            if(matrizExcel.length > 0) {
+                const categoriasNoCabecalho = matrizExcel[0]; // Primeira linha (A1, B1, C1...)
+                
+                // Varre da segunda linha até o final
+                for(let linha = 1; linha < matrizExcel.length; linha++) {
+                    let colunasDessaLinha = matrizExcel[linha];
+                    
+                    // Varre cada célula desta linha
+                    for(let col = 0; col < categoriasNoCabecalho.length; col++) {
+                        let categoriaCrua = categoriasNoCabecalho[col];
+                        let assuntoCru = colunasDessaLinha[col];
+                        
+                        // Se a célula tiver texto, salva no banco!
+                        if(categoriaCrua && assuntoCru) {
+                            let categoria = String(categoriaCrua).trim();
+                            let assunto = String(assuntoCru).trim();
+                            
+                            if(categoria !== "" && assunto !== "") {
+                                novoBanco[assunto] = categoria;
+                            }
+                        }
+                    }
+                }
+            }
+
+            if(Object.keys(novoBanco).length > 0) {
+                bancoOficial = novoBanco;
+                document.getElementById('statusLog').innerHTML = `✅ Conectado à Nuvem! Tabela Horizontal lida perfeitamente.`;
+            } else {
+                throw new Error("Planilha não pôde ser lida");
+            }
+        } catch(erro) {
+            console.error("Erro na nuvem:", erro);
+            document.getElementById('statusLog').innerHTML = `⚠️ Erro ao acessar Google Sheets. Verifique o link e se a planilha tem dados na linha 1.`;
+        }
+    }
+
+    function alternarAba(aba) {
+        document.getElementById('abaDashboard').style.display = aba === 'dashboard' ? 'block' : 'none';
+        document.getElementById('abaConfig').style.display = aba === 'config' ? 'block' : 'none';
+        document.getElementById('btnTabDashboard').className = aba === 'dashboard' ? 'tab-btn active' : 'tab-btn';
+        document.getElementById('btnTabConfig').className = aba === 'config' ? 'tab-btn active' : 'tab-btn';
+    }
+
+    // Organograma adaptado para listar os itens lindamente em colunas
+    function renderizarOrganograma() {
+        const container = document.getElementById('configContainer');
+        container.innerHTML = '';
+        
+        let categoriasPrincipais = [...new Set(linhasConfig.map(l => l.cat))];
+
+        categoriasPrincipais.forEach((catGeral) => {
+            let assuntosMapeados = Object.keys(bancoOficial).filter(chave => bancoOficial[chave] === catGeral);
+            
+            let tagsHtml = assuntosMapeados.map(assunto => 
+                `<span class="tag">${assunto}</span>`
+            ).join('');
+
+            if(assuntosMapeados.length > 0) {
+                let card = `
+                <div class="config-card">
+                    <div class="config-card-header">${catGeral}</div>
+                    <div class="config-card-body">${tagsHtml}</div>
+                </div>`;
+                container.innerHTML += card;
+            }
+        });
+    }
+
+    // ==== PROCESSAMENTO DO EXCEL E TRAVA DE SEGURANÇA ====
+    function processarArquivo() {
+        const fileInput = document.getElementById('excelFile');
+        const cidade = document.getElementById('cidadeSelect').value;
+
+        if (fileInput.files.length === 0) { alert("Selecione um arquivo Excel primeiro!"); return; }
+
+        const file = fileInput.files[0];
+        const reader = new FileReader();
+
+        reader.onload = function(e) {
+            try {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, {type: 'array'});
+                const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+                const linhas = XLSX.utils.sheet_to_json(worksheet, {header: 1});
+                
+                processarLogicaEmDuasEtapas(linhas, cidade);
+            } catch (error) {
+                alert("Erro ao ler o arquivo Excel.");
+            }
+        };
+        reader.readAsArrayBuffer(file); 
+    }
+
+    function converterNumero(valor) {
+        if (!valor) return 0;
+        if (typeof valor === 'number') return valor;
+        let limpo = String(valor).replace('%', '').replace(/\s/g, '').replace(',', '.'); 
+        let numero = parseFloat(limpo);
+        return isNaN(numero) ? 0 : numero;
+    }
+
+    function processarLogicaEmDuasEtapas(linhas, cidade) {
+        if(linhas.length < 2) return;
+
+        const cabecalhos = linhas[0].map(h => String(h || "").trim().toLowerCase());
+        const idxAssunto = cabecalhos.findIndex(h => h.includes("assunto"));
+        const idxRealizadas = cabecalhos.findIndex(h => h.includes("realizada"));
+        const idxSLA = cabecalhos.findIndex(h => h.includes("sla"));
+        const idxTME = cabecalhos.findIndex(h => h.includes("t.m. fech"));
+
+        let assuntosIgnorados = [];
+        let dadosValidados = [];
+
+        for (let i = 1; i < linhas.length; i++) {
+            const colunas = linhas[i];
+            if (!colunas || colunas.length === 0) continue; 
+            
+            const assuntoCru = colunas[idxAssunto] ? String(colunas[idxAssunto]).trim() : "";
+            if (!assuntoCru || assuntoCru.toLowerCase().includes("total")) continue;
+
+            const categoriaFinal = bancoOficial[assuntoCru]; 
+            const realizadas = converterNumero(colunas[idxRealizadas]);
+            
+            if (!categoriaFinal && realizadas > 0) {
+                assuntosIgnorados.push(assuntoCru); 
+            }
+            dadosValidados.push({ colunas, assuntoCru, categoriaFinal, realizadas });
+        }
+
+        if (assuntosIgnorados.length > 0) {
+            let unicos = [...new Set(assuntosIgnorados)];
+            let mensagem = `⚠️ ALERTA: FALTAM ASSUNTOS NA SUA PLANILHA DO GOOGLE!\n\nFoi encontrado ${unicos.length} assunto(s) no arquivo de ${cidade} que não estão cadastrados na nuvem:\n\n`;
+            mensagem += unicos.map(a => "❌ " + a).join("\n");
+            mensagem += "\n\nDeseja IGNORAR essas ordens de serviço e processar o restante?\n(Se clicar em CANCELAR, vá até a sua planilha do Google, adicione-os na coluna certa e recarregue a página).";
+            
+            if(!confirm(mensagem)) {
+                document.getElementById('excelFile').value = ""; 
+                return;
+            }
+        }
+
+        dadosValidados.forEach(item => {
+            if (!item.categoriaFinal) return; 
+
+            let sla = converterNumero(item.colunas[idxSLA]);
+            const tme = converterNumero(item.colunas[idxTME]);
+
+            if(sla <= 1 && sla > 0 && String(item.colunas[idxSLA]).indexOf('%') === -1) { sla = sla * 100; }
+
+            const chave = `${cidade}_${item.categoriaFinal}`;
+            if (!resultadosDashboard[chave]) {
+                resultadosDashboard[chave] = { totalRealizadas: 0, somaPesoSLA: 0, somaPesoTME: 0 };
+            }
+
+            resultadosDashboard[chave].totalRealizadas += item.realizadas;
+            resultadosDashboard[chave].somaPesoSLA += (item.realizadas * sla);
+            resultadosDashboard[chave].somaPesoTME += (item.realizadas * tme);
+        });
+
+        document.getElementById('statusLog').innerHTML = `✅ Dados de <b>${cidade}</b> processados com sucesso!`;
+        document.getElementById('excelFile').value = ""; 
+
+        localStorage.setItem('upvalueDashboardData', JSON.stringify(resultadosDashboard));
+        gerarDashboard();
+    }
+
+    function gerarDashboard() {
+        const thead = document.querySelector("#tabelaResultados thead");
+        const tbody = document.querySelector("#tabelaResultados tbody");
+
+        let trHead = "<tr><th>INDICADORES DAS REGIONAIS</th>";
+        cidadesList.forEach(c => { trHead += `<th>${c}</th>`; });
+        trHead += `<th style="background-color: #0f2c49; color: white;">MATRIZ</th></tr>`;
+        thead.innerHTML = trHead;
+        tbody.innerHTML = ""; 
+
+        linhasConfig.forEach(linha => {
+            const tr = document.createElement("tr");
+            if(linha.type === "VOL") tr.className = "vol-row"; 
+            
+            let html = `<td>${linha.label}</td>`;
+            
+            let somaVolumeCidades = 0;
+            let somaMediasCidades = 0;
+            let qtdCidadesValidas = 0;
+
+            cidadesList.forEach(cidade => {
+                const chave = `${cidade}_${linha.cat}`;
+                const dados = resultadosDashboard[chave];
+                let valorParaExibir = ""; 
+
+                if (dados && dados.totalRealizadas > 0) {
+                    if (linha.type === "VOL") {
+                        valorParaExibir = Math.floor(dados.totalRealizadas);
+                        somaVolumeCidades += valorParaExibir; 
+                    } 
+                    else if (linha.type === "SLA") {
+                        valorParaExibir = Math.floor(dados.somaPesoSLA / dados.totalRealizadas);
+                        somaMediasCidades += valorParaExibir; 
+                        qtdCidadesValidas++;
+                    } 
+                    else if (linha.type === "TME") {
+                        valorParaExibir = Math.floor(dados.somaPesoTME / dados.totalRealizadas);
+                        somaMediasCidades += valorParaExibir; 
+                        qtdCidadesValidas++;
+                    }
+                }
+                html += `<td>${valorParaExibir}</td>`;
+            });
+
+            let valorMatriz = ""; 
+            
+            if (linha.type === "VOL" && somaVolumeCidades > 0) {
+                valorMatriz = Math.floor(somaVolumeCidades);
+            } 
+            else if (qtdCidadesValidas > 0) {
+                let mediaSimplesExata = somaMediasCidades / qtdCidadesValidas;
+                valorMatriz = Number(mediaSimplesExata.toFixed(2)).toString().replace('.', ',');
+            }
+            
+            html += `<td style="background-color: #eef2f5;"><strong>${valorMatriz}</strong></td>`;
+            tr.innerHTML = html;
+            tbody.appendChild(tr);
+        });
+    }
+
+    function limparCidade() {
+        const cidade = document.getElementById('cidadeSelect').value;
+        if(confirm(`Limpar todos os dados calculados da regional ${cidade}?`)) {
+            Object.keys(resultadosDashboard).forEach(chave => {
+                if(chave.startsWith(cidade + "_")) { delete resultadosDashboard[chave]; }
+            });
+            document.getElementById('statusLog').innerHTML = `🧹 Coluna de <b>${cidade}</b> apagada.`;
+            localStorage.setItem('upvalueDashboardData', JSON.stringify(resultadosDashboard));
+            gerarDashboard();
+        }
+    }
+
+    function limparTudo() {
+        if(confirm(`Tem certeza que deseja zerar o painel inteiro?`)) {
+            resultadosDashboard = {};
+            document.getElementById('statusLog').innerHTML = "🗑️ Painel zerado com sucesso.";
+            document.getElementById('excelFile').value = "";
+            localStorage.removeItem('upvalueDashboardData');
+            gerarDashboard();
+        }
+    }
+
+    function exportarExcel() {
+        let tabela = document.getElementById("tabelaResultados");
+        let wb = XLSX.utils.table_to_book(tabela, { sheet: "Dashboard", raw: true });
+        XLSX.writeFile(wb, "Dashboard_Consolidado.xlsx");
+        document.getElementById('statusLog').innerHTML = `💾 Excel exportado! Copie e cole na sua planilha.`;
+    }
+</script>
+
+</body>
+</html>
