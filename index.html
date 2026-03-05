@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard Operacional - Upvalue</title>
+    <title>Sistema de Automação - Dashboard Upvalue</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
         :root { --primary: #1f4e79; --bg: #f3f6f9; --surface: #ffffff; --text: #333333; --border: #d1d5db; }
@@ -35,15 +35,20 @@
         td:first-child { text-align: left; background-color: #f8fafc; font-weight: 500; }
         th { background-color: var(--primary); color: white; }
         .vol-row td { background-color: #eef2f5; font-weight: bold; }
-        .log { margin-top: 10px; font-size: 14px; color: #155724; font-weight: 500;}
+        .log { margin-top: 10px; font-size: 14px; color: #155724; }
         
-        .config-actions { background: #eef2f5; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid var(--border); display: flex; gap: 10px; align-items: center; justify-content: space-between;}
+        .config-actions { background: #eef2f5; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid var(--border); display: flex; gap: 10px; align-items: center; }
         .config-header { margin-bottom: 10px; color: var(--primary); margin-top: 0; }
-        .config-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 15px; }
+        .config-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 20px; }
         .config-card { border: 1px solid var(--border); border-radius: 8px; background: white; display: flex; flex-direction: column; }
-        .config-card-header { background: #eef2f5; color: var(--primary); padding: 10px; font-weight: bold; border-radius: 8px 8px 0 0; border-bottom: 1px solid var(--border); text-align: center; font-size: 13px;}
-        .config-card-body { padding: 15px; flex-grow: 1; display: flex; flex-direction: column; gap: 8px; align-items: center;}
-        .tag { background: var(--primary); color: white; padding: 6px 12px; border-radius: 15px; font-size: 12px; text-align: center; width: 90%;}
+        .config-card-header { background: #eef2f5; color: var(--primary); padding: 10px; font-weight: bold; border-radius: 8px 8px 0 0; border-bottom: 1px solid var(--border); }
+        .config-card-body { padding: 15px; flex-grow: 1; display: flex; flex-wrap: wrap; gap: 8px; }
+        .tag { background: var(--primary); color: white; padding: 5px 10px; border-radius: 15px; font-size: 12px; display: flex; align-items: center; gap: 8px; }
+        .tag-close { cursor: pointer; color: #ffb3b3; font-weight: bold; font-size: 14px; }
+        .tag-close:hover { color: white; }
+        .config-card-footer { padding: 10px; border-top: 1px solid var(--border); display: flex; gap: 5px; }
+        .config-card-footer input { flex: 1; }
+        .config-card-footer button { padding: 8px 15px; }
     </style>
 </head>
 <body>
@@ -52,7 +57,7 @@
     
     <div class="nav-tabs">
         <button id="btnTabDashboard" class="tab-btn active" onclick="alternarAba('dashboard')">📊 Painel Operacional</button>
-        <button id="btnTabConfig" class="tab-btn" onclick="alternarAba('config')">⚙️ Banco de Dados (Visualizador)</button>
+        <button id="btnTabConfig" class="tab-btn" onclick="alternarAba('config')">⚙️ Banco de Dados (Configuração)</button>
     </div>
 
     <div id="abaDashboard" style="display: block;">
@@ -84,7 +89,7 @@
                 <button class="btn-clear-all" onclick="limparTudo()">🗑️ Limpar Tudo</button>
                 <button class="btn-export" onclick="exportarExcel()">💾 Exportar para Excel</button>
             </div>
-            <div id="statusLog" class="log">🔄 Conectando ao Banco de Dados na Nuvem...</div>
+            <div id="statusLog" class="log"></div>
         </div>
 
         <div class="card" style="padding: 0;">
@@ -97,14 +102,14 @@
 
     <div id="abaConfig" style="display: none;">
         <div class="card">
-            <h2 class="config-header">⚙️ Organograma Oficial (Lido da Nuvem)</h2>
+            <h2 class="config-header">⚙️ Organograma do Banco de Dados</h2>
             
             <div class="config-actions">
-                <div>
-                    <p style="margin: 0;"><strong>Como adicionar assuntos novos?</strong></p>
-                    <p style="margin: 0; font-size: 14px;">A sua planilha no Google Sheets agora é LIDA NA HORIZONTAL (Categorias no topo, assuntos embaixo). Edite-a e atualize esta página.</p>
+                <div style="flex-grow: 1;">
+                    <p style="margin: 0;">As mudanças feitas aqui só terão efeito após clicar em Salvar.</p>
                 </div>
-                <button class="btn-add" onclick="window.open('https://docs.google.com/spreadsheets/d/1Edxb5BOfuPSdwQNUJzO4aN4QeKf8CZwdUUsqM4GXz2M/edit?gid=0#gid=0')">📝 Abrir Planilha Google Sheets</button>
+                <button class="btn-export" onclick="salvarConfigBanco()">💾 Salvar Configurações</button>
+                <button class="btn-clear-all" onclick="cancelarConfigBanco()">❌ Cancelar Alterações</button>
             </div>
 
             <div class="config-grid" id="configContainer">
@@ -115,43 +120,6 @@
 </div>
 
 <script>
-    // 🔗 COLA AQUI O LINK QUE COPIASTE DO APPS SCRIPT
-const LINK_APPS_SCRIPT = "https://script.google.com/macros/s/AKfycbwz-vlvsgfPP3blOWnstLDYSq8aVgTAYBwj3jWaEk827DpGZvmZTxsEEWv3eF4jy9S4ng/exec";
-
-async function conectarBancoNuvem() {
-    try {
-        const resposta = await fetch(LINK_APPS_SCRIPT);
-        const matrizExcel = await resposta.json(); // Lê como JSON direto do Script
-
-        let novoBanco = {};
-        
-        if(matrizExcel.length > 0) {
-            const categoriasNoCabecalho = matrizExcel[0]; 
-            
-            for(let linha = 1; linha < matrizExcel.length; linha++) {
-                let colunasDessaLinha = matrizExcel[linha];
-                for(let col = 0; col < categoriasNoCabecalho.length; col++) {
-                    let categoriaCrua = categoriasNoCabecalho[col];
-                    let assuntoCru = colunasDessaLinha[col];
-                    
-                    if(categoriaCrua && assuntoCru) {
-                        novoBanco[String(assuntoCru).trim()] = String(categoriaCrua).trim();
-                    }
-                }
-            }
-        }
-
-        if(Object.keys(novoBanco).length > 0) {
-            bancoOficial = novoBanco;
-            document.getElementById('statusLog').innerHTML = `✅ Nuvem Ativa! Dados sincronizados via Apps Script.`;
-        }
-    } catch(erro) {
-        console.error("Erro Apps Script:", erro);
-        document.getElementById('statusLog').innerHTML = `⚠️ Erro ao ligar ao Apps Script. Verifica as permissões.`;
-    }
-}
-
-
     const linhasConfig = [
         { label: "Tempo Médio de Instalação Fibra Urbana em Horas", type: "TME", cat: "INSTALAÇÕES FIBRA URBANA" },
         { label: "Taxa em % Feito dentro Prazo Instalação Fibra Urbana", type: "SLA", cat: "INSTALAÇÕES FIBRA URBANA" },
@@ -182,13 +150,59 @@ async function conectarBancoNuvem() {
 
     const cidadesList = ["JIP", "OPO", "ALV", "MDO", "MED", "JRA", "NBO", "RLM", "SFO", "ATF", "SFP"];
 
+    const mapeamentoPadrao = {
+        "Instalação Fibra Urbana": "INSTALAÇÕES FIBRA URBANA",
+        "Retorno de Instalação Fibra Urbana": "INSTALAÇÕES FIBRA URBANA",
+        "Instalação Fibra Rural": "INSTALAÇÕES FIBRA Rural",
+        "Retorno de Instalação Fibra Rural": "INSTALAÇÕES FIBRA Rural",
+        "Instalação Rádio": "Instalações Rádio",
+        "Retorno de Instalação Rádio": "Instalações Rádio",
+        "Alteração de Endereço Fibra Urbana": "Alteração de Endereço Fibra Urbana",
+        "Retorno de Alteração de Endereço Fibra Urbana": "Alteração de Endereço Fibra Urbana",
+        "Alteração de Endereço Fibra Rural": "Alteração de Endereço Fibra Rural",
+        "Retorno de Alteração de Endereço Fibra Rural": "Alteração de Endereço Fibra Rural",
+        "Alteração de Endereço Rádio": "Alteração de Endereço Radio",
+        "Retorno de Alteração de Endereço Rádio": "Alteração de Endereço Radio",
+        "Alteração da Tecnologia para Fibra": "Alteração da Tecnologia para Fibra/Rádio",
+        "Alteração da Tecnologia para Rádio": "Alteração da Tecnologia para Fibra/Rádio",
+        "Retorno de Alteração de Tecnologia para Fibra": "Alteração da Tecnologia para Fibra/Rádio",
+        "Retorno de Alteração de Tecnologia Rádio para Fibra": "Alteração da Tecnologia para Fibra/Rádio",
+        "Retorno de Alteração de Tecnologia Fibra para Rádio": "Alteração da Tecnologia para Fibra/Rádio",
+        "Suporte Externo Fibra Urbana": "suporte externo fibra Urbana",
+        "Sem Conexão Fibra Urbana": "suporte externo fibra Urbana",
+        "Alteração na Rede Interna Fibra Urbana": "suporte externo fibra Urbana",
+        "Reincidência de Suporte Fibra Urbana": "suporte externo fibra Urbana",
+        "Sem Conexão (Link LOS)": "suporte externo fibra Urbana",
+        "Troca de Equipamentos": "suporte externo fibra Urbana",
+        "Suporte Streaming/Apps": "suporte externo fibra Urbana",
+        "Regulagem de Sinal": "suporte externo fibra Urbana",
+        "Suporte Prioritário": "suporte externo fibra Urbana",
+        "Manutenção Preventiva Operacional": "suporte externo fibra Urbana",
+        "Suporte Externo Fibra Rural": "suporte externo fibra Rural",
+        "Sem Conexão Fibra Rural": "suporte externo fibra Rural",
+        "Alteração na Rede Interna Fibra Rural": "suporte externo fibra Rural",
+        "Reincidência de Suporte Fibra Rural": "suporte externo fibra Rural",
+        "Suporte Externo Rádio": "suporte externo Radio",
+        "Sem Conexão Rádio": "suporte externo Radio",
+        "Alteração na Rede Interna Rádio": "suporte externo Radio",
+        "Reincidência de Suporte Rádio": "suporte externo Radio",
+        "Remoção de Equipamentos": "Remoção de Equipamentos",
+        "Recuperação de Equipamento por Cobrança": "Remoção de Equipamentos",
+        "Viabilidade": "Viabilidades"
+    };
+
     let bancoOficial = {}; 
+    let bancoRascunho = {}; 
     let resultadosDashboard = {}; 
 
-    // ==== INICIALIZAÇÃO: LENDO DO GOOGLE SHEETS (HORIZONTAL) ====
-    window.onload = async function() { 
-        await conectarBancoNuvem();
+    window.onload = function() { 
+        // 1. Carrega Configurações (Banco de Dados)
+        let salvoBanco = localStorage.getItem('upvalueBancoCategorias');
+        if(salvoBanco) { bancoOficial = JSON.parse(salvoBanco); } 
+        else { bancoOficial = { ...mapeamentoPadrao }; }
+        bancoRascunho = { ...bancoOficial }; 
 
+        // 2. Carrega Dados do Dashboard (Sistema de Cache/Anti-perda)
         let salvoDashboard = localStorage.getItem('upvalueDashboardData');
         if(salvoDashboard) { resultadosDashboard = JSON.parse(salvoDashboard); }
 
@@ -196,94 +210,73 @@ async function conectarBancoNuvem() {
         renderizarOrganograma();
     }
 
-    async function conectarBancoNuvem() {
-        if(LINK_GOOGLE_SHEETS_CSV === "COLE_O_LINK_AQUI") {
-            document.getElementById('statusLog').innerHTML = `⚠️ Você ainda não configurou o link do Google Sheets no código. A tabela ficará vazia.`;
-            return;
-        }
-
-        try {
-            const resposta = await fetch(LINK_GOOGLE_SHEETS_CSV);
-            const csvText = await resposta.text();
-            
-            const workbook = XLSX.read(csvText, {type: 'string'});
-            const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-            
-            // {header: 1} converte a tabela numa Matriz onde a Linha 0 são os cabeçalhos!
-            const matrizExcel = XLSX.utils.sheet_to_json(worksheet, {header: 1});
-
-            let novoBanco = {};
-            
-            if(matrizExcel.length > 0) {
-                const categoriasNoCabecalho = matrizExcel[0]; // Primeira linha (A1, B1, C1...)
-                
-                // Varre da segunda linha até o final
-                for(let linha = 1; linha < matrizExcel.length; linha++) {
-                    let colunasDessaLinha = matrizExcel[linha];
-                    
-                    // Varre cada célula desta linha
-                    for(let col = 0; col < categoriasNoCabecalho.length; col++) {
-                        let categoriaCrua = categoriasNoCabecalho[col];
-                        let assuntoCru = colunasDessaLinha[col];
-                        
-                        // Se a célula tiver texto, salva no banco!
-                        if(categoriaCrua && assuntoCru) {
-                            let categoria = String(categoriaCrua).trim();
-                            let assunto = String(assuntoCru).trim();
-                            
-                            if(categoria !== "" && assunto !== "") {
-                                novoBanco[assunto] = categoria;
-                            }
-                        }
-                    }
-                }
-            }
-
-            if(Object.keys(novoBanco).length > 0) {
-                bancoOficial = novoBanco;
-                document.getElementById('statusLog').innerHTML = `✅ Conectado à Nuvem! Tabela Horizontal lida perfeitamente.`;
-            } else {
-                throw new Error("Planilha não pôde ser lida");
-            }
-        } catch(erro) {
-            console.error("Erro na nuvem:", erro);
-            document.getElementById('statusLog').innerHTML = `⚠️ Erro ao acessar Google Sheets. Verifique o link e se a planilha tem dados na linha 1.`;
-        }
-    }
-
     function alternarAba(aba) {
         document.getElementById('abaDashboard').style.display = aba === 'dashboard' ? 'block' : 'none';
         document.getElementById('abaConfig').style.display = aba === 'config' ? 'block' : 'none';
         document.getElementById('btnTabDashboard').className = aba === 'dashboard' ? 'tab-btn active' : 'tab-btn';
         document.getElementById('btnTabConfig').className = aba === 'config' ? 'tab-btn active' : 'tab-btn';
+        
+        if(aba === 'config') {
+            bancoRascunho = { ...bancoOficial };
+            renderizarOrganograma();
+        }
     }
 
-    // Organograma adaptado para listar os itens lindamente em colunas
     function renderizarOrganograma() {
         const container = document.getElementById('configContainer');
         container.innerHTML = '';
         
         let categoriasPrincipais = [...new Set(linhasConfig.map(l => l.cat))];
 
-        categoriasPrincipais.forEach((catGeral) => {
-            let assuntosMapeados = Object.keys(bancoOficial).filter(chave => bancoOficial[chave] === catGeral);
+        categoriasPrincipais.forEach((catGeral, index) => {
+            let assuntosMapeados = Object.keys(bancoRascunho).filter(chave => bancoRascunho[chave] === catGeral);
             
             let tagsHtml = assuntosMapeados.map(assunto => 
-                `<span class="tag">${assunto}</span>`
+                `<span class="tag">${assunto} <span class="tag-close" onclick="removerDoRascunho('${assunto}')" title="Remover">&times;</span></span>`
             ).join('');
 
-            if(assuntosMapeados.length > 0) {
-                let card = `
-                <div class="config-card">
-                    <div class="config-card-header">${catGeral}</div>
-                    <div class="config-card-body">${tagsHtml}</div>
-                </div>`;
-                container.innerHTML += card;
-            }
+            let card = `
+            <div class="config-card">
+                <div class="config-card-header">${catGeral}</div>
+                <div class="config-card-body">${tagsHtml}</div>
+                <div class="config-card-footer">
+                    <input type="text" id="inputNovoAssunto${index}" placeholder="Nome do assunto...">
+                    <button class="btn-add" onclick="adicionarNoRascunho('${catGeral}', 'inputNovoAssunto${index}')">Vincular</button>
+                </div>
+            </div>`;
+            container.innerHTML += card;
         });
     }
 
-    // ==== PROCESSAMENTO DO EXCEL E TRAVA DE SEGURANÇA ====
+    function adicionarNoRascunho(categoriaDestino, inputId) {
+        let input = document.getElementById(inputId);
+        let novoAssunto = input.value.trim();
+        if (novoAssunto === "") return;
+        bancoRascunho[novoAssunto] = categoriaDestino; 
+        input.value = "";
+        renderizarOrganograma(); 
+    }
+
+    function removerDoRascunho(assunto) {
+        if(confirm(`Deseja remover "${assunto}"? Lembre-se de salvar as configurações depois.`)) {
+            delete bancoRascunho[assunto];
+            renderizarOrganograma();
+        }
+    }
+
+    function salvarConfigBanco() {
+        bancoOficial = { ...bancoRascunho };
+        localStorage.setItem('upvalueBancoCategorias', JSON.stringify(bancoOficial));
+        alert("✅ Configurações salvas e aplicadas com sucesso!");
+    }
+
+    function cancelarConfigBanco() {
+        if(confirm("Deseja desfazer todas as edições e recarregar os assuntos originais?")) {
+            bancoRascunho = { ...bancoOficial };
+            renderizarOrganograma();
+        }
+    }
+
     function processarArquivo() {
         const fileInput = document.getElementById('excelFile');
         const cidade = document.getElementById('cidadeSelect').value;
@@ -346,12 +339,13 @@ async function conectarBancoNuvem() {
 
         if (assuntosIgnorados.length > 0) {
             let unicos = [...new Set(assuntosIgnorados)];
-            let mensagem = `⚠️ ALERTA: FALTAM ASSUNTOS NA SUA PLANILHA DO GOOGLE!\n\nFoi encontrado ${unicos.length} assunto(s) no arquivo de ${cidade} que não estão cadastrados na nuvem:\n\n`;
+            let mensagem = `⚠️ ALERTA DE BANCO DE DADOS!\n\nFoi encontrado ${unicos.length} assunto(s) no seu arquivo que NÃO ESTÃO Mapeados:\n\n`;
             mensagem += unicos.map(a => "❌ " + a).join("\n");
-            mensagem += "\n\nDeseja IGNORAR essas ordens de serviço e processar o restante?\n(Se clicar em CANCELAR, vá até a sua planilha do Google, adicione-os na coluna certa e recarregue a página).";
+            mensagem += "\n\nDeseja IGNORAR essas ordens de serviço e processar o restante?\n(Clique em CANCELAR para ir ao Banco de Dados e adicioná-las agora mesmo).";
             
             if(!confirm(mensagem)) {
                 document.getElementById('excelFile').value = ""; 
+                alternarAba('config');
                 return;
             }
         }
@@ -374,13 +368,15 @@ async function conectarBancoNuvem() {
             resultadosDashboard[chave].somaPesoTME += (item.realizadas * tme);
         });
 
-        document.getElementById('statusLog').innerHTML = `✅ Dados de <b>${cidade}</b> processados com sucesso!`;
+        document.getElementById('statusLog').innerHTML = `✅ Dados de <b>${cidade}</b> adicionados!`;
         document.getElementById('excelFile').value = ""; 
 
+        // SALVA OS DADOS NO CACHE
         localStorage.setItem('upvalueDashboardData', JSON.stringify(resultadosDashboard));
         gerarDashboard();
     }
 
+    // ==== GERAÇÃO DO DASHBOARD ====
     function gerarDashboard() {
         const thead = document.querySelector("#tabelaResultados thead");
         const tbody = document.querySelector("#tabelaResultados tbody");
@@ -425,6 +421,7 @@ async function conectarBancoNuvem() {
                 html += `<td>${valorParaExibir}</td>`;
             });
 
+            // CÁLCULO DA MATRIZ
             let valorMatriz = ""; 
             
             if (linha.type === "VOL" && somaVolumeCidades > 0) {
@@ -443,11 +440,12 @@ async function conectarBancoNuvem() {
 
     function limparCidade() {
         const cidade = document.getElementById('cidadeSelect').value;
-        if(confirm(`Limpar todos os dados calculados da regional ${cidade}?`)) {
+        if(confirm(`Limpar todos os dados calculados da cidade de ${cidade}?`)) {
             Object.keys(resultadosDashboard).forEach(chave => {
                 if(chave.startsWith(cidade + "_")) { delete resultadosDashboard[chave]; }
             });
             document.getElementById('statusLog').innerHTML = `🧹 Coluna de <b>${cidade}</b> apagada.`;
+            // ATUALIZA O CACHE
             localStorage.setItem('upvalueDashboardData', JSON.stringify(resultadosDashboard));
             gerarDashboard();
         }
@@ -458,6 +456,7 @@ async function conectarBancoNuvem() {
             resultadosDashboard = {};
             document.getElementById('statusLog').innerHTML = "🗑️ Painel zerado com sucesso.";
             document.getElementById('excelFile').value = "";
+            // LIMPA O CACHE
             localStorage.removeItem('upvalueDashboardData');
             gerarDashboard();
         }
@@ -466,8 +465,8 @@ async function conectarBancoNuvem() {
     function exportarExcel() {
         let tabela = document.getElementById("tabelaResultados");
         let wb = XLSX.utils.table_to_book(tabela, { sheet: "Dashboard", raw: true });
-        XLSX.writeFile(wb, "Dashboard_Consolidado.xlsx");
-        document.getElementById('statusLog').innerHTML = `💾 Excel exportado! Copie e cole na sua planilha.`;
+        XLSX.writeFile(wb, "Dashboard_Pronto.xlsx");
+        document.getElementById('statusLog').innerHTML = `💾 Excel exportado! Agora é só copiar e colar na sua planilha.`;
     }
 </script>
 
