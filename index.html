@@ -104,7 +104,7 @@
                     <p style="margin: 0;"><strong>Como adicionar assuntos novos?</strong></p>
                     <p style="margin: 0; font-size: 14px;">A sua planilha no Google Sheets agora é LIDA NA HORIZONTAL (Categorias no topo, assuntos embaixo). Edite-a e atualize esta página.</p>
                 </div>
-                <button class="btn-add" onclick="window.open('https://docs.google.com/spreadsheets/d/e/2PACX-1vT-ZNycUJNGzsnl3iKivA6iMnIEFQHoNI7nKCp5ECSdloNphladodpgT8DYW8MqW9QTZmk1Y9CmGVwx/pub?gid=0&single=true&output=csv')">📝 Abrir Planilha Google Sheets</button>
+                <button class="btn-add" onclick="window.open('https://docs.google.com/spreadsheets/', '_blank')">📝 Abrir Planilha Google Sheets</button>
             </div>
 
             <div class="config-grid" id="configContainer">
@@ -115,10 +115,41 @@
 </div>
 
 <script>
-    // =====================================================================================
-    // 🔗 COLOQUE AQUI O LINK DO SEU CSV PUBLICADO DO GOOGLE SHEETS
-    // =====================================================================================
-    const LINK_GOOGLE_SHEETS_CSV = "COLE_O_LINK_AQUI"; 
+    // 🔗 COLA AQUI O LINK QUE COPIASTE DO APPS SCRIPT
+const LINK_APPS_SCRIPT = "https://script.google.com/macros/s/AKfycbwz-vlvsgfPP3blOWnstLDYSq8aVgTAYBwj3jWaEk827DpGZvmZTxsEEWv3eF4jy9S4ng/exec";
+
+async function conectarBancoNuvem() {
+    try {
+        const resposta = await fetch(LINK_APPS_SCRIPT);
+        const matrizExcel = await resposta.json(); // Lê como JSON direto do Script
+
+        let novoBanco = {};
+        
+        if(matrizExcel.length > 0) {
+            const categoriasNoCabecalho = matrizExcel[0]; 
+            
+            for(let linha = 1; linha < matrizExcel.length; linha++) {
+                let colunasDessaLinha = matrizExcel[linha];
+                for(let col = 0; col < categoriasNoCabecalho.length; col++) {
+                    let categoriaCrua = categoriasNoCabecalho[col];
+                    let assuntoCru = colunasDessaLinha[col];
+                    
+                    if(categoriaCrua && assuntoCru) {
+                        novoBanco[String(assuntoCru).trim()] = String(categoriaCrua).trim();
+                    }
+                }
+            }
+        }
+
+        if(Object.keys(novoBanco).length > 0) {
+            bancoOficial = novoBanco;
+            document.getElementById('statusLog').innerHTML = `✅ Nuvem Ativa! Dados sincronizados via Apps Script.`;
+        }
+    } catch(erro) {
+        console.error("Erro Apps Script:", erro);
+        document.getElementById('statusLog').innerHTML = `⚠️ Erro ao ligar ao Apps Script. Verifica as permissões.`;
+    }
+}
 
 
     const linhasConfig = [
